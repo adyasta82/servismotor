@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Servis Motor</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap');
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: #f4f6f8;
+      color: #333;
+      padding: 20px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 20px;
+      font-weight: 700;
+    }
+    h2 {
+      color: #34495e;
+      font-weight: 700;
+      margin-top: 30px;
+      margin-bottom: 10px;
+      border-bottom: 2px solid #2980b9;
+      padding-bottom: 5px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      color: #34495e;
+      margin-top: 15px;
+    }
+    input[type="text"], input[type="date"], textarea, select {
+      width: 100%;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+      border: 2px solid #bdc3c7;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.3s ease;
+      resize: vertical;
+    }
+    input[type="text"]:focus, input[type="date"]:focus, textarea:focus, select:focus {
+      border-color: #2980b9;
+      outline: none;
+      box-shadow: 0 0 10px rgba(41, 128, 185, 0.4);
+    }
+    textarea {
+      min-height: 70px;
+    }
+    button {
+      width: 100%;
+      background: #2980b9;
+      color: white;
+      font-size: 1.1rem;
+      padding: 15px;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-bottom: 15px;
+      box-shadow: 0 6px 15px rgba(41, 128, 185, 0.5);
+      transition: background-color 0.3s ease;
+    }
+    button:hover:not(:disabled) {
+      background: #1f6391;
+      box-shadow: 0 8px 20px rgba(31, 99, 145, 0.7);
+    }
+    button:disabled {
+      background: grey;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    select {
+      cursor: pointer;
+    }
+    #message {
+      text-align: center;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+    .error {
+      color: #e74c3c;
+    }
+    .success {
+      color: #27ae60;
+    }
+    .customer-manager {
+      background: white;
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 6px 15px rgba(41, 128, 185, 0.1);
+    }
+    #customerList {
+      margin-top: 10px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Servis Motor</h1>
+
+  <section class="customer-manager" aria-label="Manajemen Data Konsumen">
+    <h2>Data Konsumen</h2>
+    <label for="customerSelect">Pilih Konsumen</label>
+    <select id="customerSelect" aria-describedby="customerHelp">
+      <option value="">-- Pilih Konsumen --</option>
+    </select>
+    <div id="customerHelp" class="info-text">Atau tambah konsumen baru di bawah ini.</div>
+
+    <label for="newCustomerName">Nama Konsumen Baru</label>
+    <input type="text" id="newCustomerName" placeholder="Nama Konsumen" />
+    <label for="newVehicleNumber">Nomor Kendaraan</label>
+    <input type="text" id="newVehicleNumber" placeholder="Nomor Kendaraan" />
+    <label for="newWhatsAppNumber">Nomor WhatsApp (contoh: 628123456789)</label>
+    <input type="text" id="newWhatsAppNumber" placeholder="Nomor WhatsApp tanpa tanda +" />
+    <button id="addCustomerBtn" type="button">Tambah Konsumen</button>
+  </section>
+
+  <form id="serviceForm" novalidate aria-label="Form Input Data Servis">
+    <h2>Input Detail Servis</h2>
+
+    <label for="serviceDate">Tanggal Servis *</label>
+    <input type="date" id="serviceDate" name="serviceDate" required />
+
+    <label for="complaint">Keluhan</label>
+    <textarea id="complaint" name="complaint" placeholder="Masukkan keluhan servis (opsional)"></textarea>
+
+    <label for="mechanicName">Nama Mekanik *</label>
+    <input type="text" id="mechanicName" name="mechanicName" placeholder="Masukkan nama mekanik" required />
+
+    <label for="cost">Biaya Servis (Rp) *</label>
+    <input type="text" id="cost" name="cost" placeholder="Masukkan biaya servis" required />
+
+    <button type="button" id="sendWhatsappBtn" disabled>Kirim Pemberitahuan lewat WhatsApp</button>
+    <button type="button" id="generatePdfBtn" disabled>Cetak dan Bagikan PDF</button>
+
+    <div id="message" aria-live="polite"></div>
+  </form>
+
+  <!-- jsPDF library CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    (function(){
+      const { jsPDF } = window.jspdf;
+
+      // Elements
+      const customerSelect = document.getElementById('customerSelect');
+      const addCustomerBtn = document.getElementById('addCustomerBtn');
+      const newCustomerName = document.getElementById('newCustomerName');
+      const newVehicleNumber = document.getElementById('newVehicleNumber');
+      const newWhatsAppNumber = document.getElementById('newWhatsAppNumber');
+      const serviceDate = document.getElementById('serviceDate');
+      const complaint = document.getElementById('complaint');
+      const mechanicName = document.getElementById('mechanicName');
+      const cost = document.getElementById('cost');
+      const sendWhatsappBtn = document.getElementById('sendWhatsappBtn');
+      const generatePdfBtn = document.getElementById('generatePdfBtn');
+      const messageEl = document.getElementById('message');
+
+      let customers = [];
+
+      // Load customers from localStorage
+      function loadCustomers(){
+        const data = localStorage.getItem('servisMotorCustomers');
+        customers = data ? JSON.parse(data) : [];
+      }
+
+      // Save customers to localStorage
+      function saveCustomers(){
+        localStorage.setItem('servisMotorCustomers', JSON.stringify(customers));
+      }
+
+      // Populate customer select dropdown
+      function populateCustomerSelect(){
+        // Clear options except default
+        customerSelect.innerHTML = '<option value="">-- Pilih Konsumen --</option>';
+        customers.forEach((cust, idx) => {
+          const option = document.createElement('option');
+          option.value = idx;
+          option.textContent = `${cust.name} - ${cust.vehicleNumber}`;
+          customerSelect.appendChild(option);
+        });
+      }
+
+      // Reset new customer inputs
+      function resetNewCustomerInputs(){
+        newCustomerName.value = '';
+        newVehicleNumber.value = '';
+        newWhatsAppNumber.value = '';
+      }
+
+      // Validate WhatsApp number format (simple digits only, starting with country code e.g. 62)
+      function validateWhatsAppNumber(num){
+        const valid = /^\d{8,15}$/.test(num);
+        return valid;
+      }
+
+      // Add customer button clicked
+      addCustomerBtn.addEventListener('click', ()=>{
+        const name = newCustomerName.value.trim();
+        const vehicle = newVehicleNumber.value.trim();
+        const whatsapp = newWhatsAppNumber.value.trim();
+
+        if(!name || !vehicle || !whatsapp){
+          showMessage('Semua data konsumen baru harus diisi', true);
+          return;
+        }
+        if(!validateWhatsAppNumber(whatsapp)){
+          showMessage('Nomor WhatsApp tidak valid. Masukkan angka saja, tanpa tanda + atau spasi.', true);
+          return;
+        }
+        // Check duplicate vehicle number or WhatsApp number? Optional
+
+        customers.push({name, vehicleNumber: vehicle, whatsappNumber: whatsapp});
+        saveCustomers();
+        populateCustomerSelect();
+        resetNewCustomerInputs();
+        showMessage('Konsumen berhasil ditambahkan', false);
+      });
+
+      // Show message
+      function showMessage(text, isError){
+        messageEl.textContent = text;
+        messageEl.className = isError ? 'error' : 'success';
+        if(text){
+          setTimeout(()=>{
+            messageEl.textContent = '';
+            messageEl.className = '';
+          }, 3500);
+        }
+      }
+
+      // Format to Indonesian Rupiah currency string
+      function formatRupiah(angka){
+        return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g,".");
+      }
+
+      // Validate service form inputs
+      function validateServiceForm(){
+        if(customerSelect.value === ""){
+          showMessage("Pilih konsumen terlebih dahulu.", true);
+          return false;
+        }
+        if(!serviceDate.value){
+          showMessage("Tanggal servis harus diisi.", true);
+          return false;
+        }
+        if(!mechanicName.value.trim()){
+          showMessage("Nama mekanik harus diisi.", true);
+          return false;
+        }
+        if(!cost.value.trim()){
+          showMessage("Biaya servis harus diisi.", true);
+          return false;
+        }
+        const costNum = parseInt(cost.value.replace(/\D/g, ''), 10);
+        if(isNaN(costNum) || costNum <= 0){
+          showMessage("Biaya servis harus angka lebih dari 0.", true);
+          return false;
+        }
+        return true;
+      }
+
+      // Enable or disable service action buttons based on customer selection
+      function updateActionButtons(){
+        const enabled = customerSelect.value !== "";
+        sendWhatsappBtn.disabled = !enabled;
+        generatePdfBtn.disabled = !enabled;
+      }
+
+      customerSelect.addEventListener('change', ()=>{
+        updateActionButtons();
+        messageEl.textContent = '';
+        messageEl.className = '';
+      });
+
+      sendWhatsappBtn.addEventListener('click', ()=>{
+        messageEl.textContent = '';
+        messageEl.className = '';
+
+        if(!validateServiceForm()) return;
+
+        const cust = customers[customerSelect.value];
+        const sDate = serviceDate.value;
+        const complaintText = complaint.value.trim() || '-';
+        const mech = mechanicName.value.trim();
+        const costRaw = cost.value.trim();
+        const costNum = parseInt(costRaw.replace(/\D/g, ''),10);
+        const costFormatted = formatRupiah(costNum);
+
+        // WhatsApp message
+        // Phone number must be in international format without +, for wa.me use
+        const waNumber = cust.whatsappNumber;
+
+        // Build text message with line breaks encoded as %0A
+        const textMsg =
+          `Halo ${cust.name},%0A` +
+          `Servis motor Anda dengan nomor plat ${cust.vehicleNumber} pada tanggal ${sDate} telah tercatat.%0A` +
+          `Keluhan: ${complaintText}%0A` +
+          `Mekanik yang menangani: ${mech}%0A` +
+          `Biaya servis: ${costFormatted}%0A%0A` +
+          `Terima kasih telah menggunakan layanan kami.`;
+
+        const waUrl = `https://wa.me/${waNumber}?text=${textMsg}`;
+
+        window.open(waUrl, '_blank');
+      });
+
+      generatePdfBtn.addEventListener('click', async ()=>{
+        messageEl.textContent = '';
+        messageEl.className = '';
+
+        if(!validateServiceForm()) return;
+
+        const cust = customers[customerSelect.value];
+        const sDate = serviceDate.value;
+        const complaintText = complaint.value.trim() || '-';
+        const mech = mechanicName.value.trim();
+        const costRaw = cost.value.trim();
+        const costNum = parseInt(costRaw.replace(/\D/g, ''),10);
+        const costFormatted = formatRupiah(costNum);
+
+        const doc = new jsPDF();
+
+        doc.setFontSize(20);
+        doc.setTextColor(54,54,54);
+        doc.text("Laporan Biaya Servis Motor", 105, 20, null, null, "center");
+
+        let y = 35;
+        const lineHeight = 10;
+
+        doc.setFontSize(12);
+        doc.setTextColor(33,33,33);
+
+        doc.text(`Nama Konsumen: ${cust.name}`, 20, y);
+        y += lineHeight;
+        doc.text(`Nomor Kendaraan: ${cust.vehicleNumber}`, 20, y);
+        y += lineHeight;
+        doc.text(`Tanggal Servis: ${sDate}`, 20, y);
+        y += lineHeight;
+        doc.text(`Keluhan: ${complaintText}`, 20, y);
+        y += lineHeight;
+        doc.text(`Nama Mekanik: ${mech}`, 20, y);
+        y += lineHeight * 1.5;
+
+        doc.setDrawColor(100);
+        doc.setLineWidth(0.5);
+        doc.line(20, y, 190, y);
+        y += lineHeight;
+
+        doc.setFontSize(14);
+        doc.text(`Total Biaya: ${costFormatted}`, 20, y);
+        y += lineHeight;
+
+        doc.setFontSize(10);
+        doc.setTextColor(120,120,120);
+        doc.text("* Harap simpan laporan ini sebagai bukti pembayaran servis motor.", 20, y + 15);
+
+        const fileName = `Laporan_Servis_${cust.name.replace(/\s/g, "_")}_${sDate}.pdf`;
+
+        // Try web share API for file sharing (mobile browsers)
+        if(navigator.canShare && navigator.canShare({files: [new File([], '')]})){
+          try{
+            const pdfBlob = doc.output('blob');
+            const filesArray = [ new File([pdfBlob], fileName, { type: "application/pdf" }) ];
+            if(navigator.canShare({files: filesArray})){
+              await navigator.share({
+                files: filesArray,
+                title: fileName,
+                text: `Laporan servis motor ${cust.name} pada tanggal ${sDate}`
+              });
+              showMessage('PDF berhasil dibagikan menggunakan fitur berbagi.', false);
+              return;
+            }
+          } catch(e) {
+            // Fallback to download
+          }
+        }
+
+        // Fallback: save PDF to download
+        doc.save(fileName);
+        showMessage('PDF telah diunduh. Silakan kirim melalui WhatsApp secara manual.', false);
+      });
+
+      // Initialize app
+      function init(){
+        loadCustomers();
+        populateCustomerSelect();
+        updateActionButtons();
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
+
